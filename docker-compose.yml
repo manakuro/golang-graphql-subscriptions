@@ -1,0 +1,11 @@
+version: '3'
+services:
+  redis:
+    image: redis:5.0.7
+    volumes:
+      - redis-data:/data
+    ports:
+      - '6379:6379'
+volumes:
+  redis-data:
+    driver: local
