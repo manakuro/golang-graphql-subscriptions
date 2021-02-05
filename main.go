@@ -2,15 +2,16 @@ package main
 
 import (
 	"errors"
+	"golang-graphql-subscriptions/infrastructure/graphql"
 	"log"
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql/playground"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
 	"golang-graphql-subscriptions/infrastructure/datastore"
-	"golang-graphql-subscriptions/infrastructure/graphql"
 )
 
 func main() {
@@ -28,16 +29,29 @@ func main() {
 	}
 	defer client.Close()
 
-	srv := graphql.NewGraphQLServer(client)
-	e.POST("/query", func(c echo.Context) error {
-		srv.ServeHTTP(c.Response(), c.Request())
-		return nil
-	})
+	{
+		// For CORS
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{}))
 
-	e.GET("/playground", func(c echo.Context) error {
-		playground.Handler("GraphQL", "/query").ServeHTTP(c.Response(), c.Request())
-		return nil
-	})
+		srv := graphql.NewGraphQLServer(client)
+
+		// For Query and Mutations
+		e.POST("/query", func(c echo.Context) error {
+			srv.ServeHTTP(c.Response(), c.Request())
+			return nil
+		})
+
+		// For Subscriptions
+		e.GET("/subscriptions", func(c echo.Context) error {
+			srv.ServeHTTP(c.Response(), c.Request())
+			return nil
+		})
+
+		e.GET("/playground", func(c echo.Context) error {
+			playground.Handler("GraphQL", "/query").ServeHTTP(c.Response(), c.Request())
+			return nil
+		})
+	}
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
