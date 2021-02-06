@@ -7,17 +7,19 @@ import { Input, Text, Stack, Flex, Button } from "@chakra-ui/react"
 type Message = {
   message: string
 }
+type MessageSubscription = {
+  messageCreated: Message
+}
 
 export const Component: React.VFC = () => {
-  const { data, loading } = useSubscription<Message>(MESSAGE_CREATED);
+  const { data } = useSubscription<MessageSubscription>(MESSAGE_CREATED);
   const [createMessage] = useMutation<Message>(CREATE_MESSAGE);
   const [messages, setMessages] = useState<string[]>(['First message']);
   const [inputValue, setInputValue] = useState('')
 
   useEffect(() => {
-    if (data?.message) setMessages(m => [...m, data?.message])
-  }, [data?.message])
-  console.log(data, loading)
+    if (data?.messageCreated?.message) setMessages(m => [...m, data?.messageCreated?.message])
+  }, [data?.messageCreated?.message])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value)
@@ -37,7 +39,7 @@ export const Component: React.VFC = () => {
         </Flex>
 
         <Stack spacing={2} p={4}>
-          {messages.map(m => <Text key={m}>{m}</Text>)}
+          {messages.map((m, i) => <Text key={`${i}_${m}`}>{m}</Text>)}
         </Stack>
       </Stack>
     </Flex>

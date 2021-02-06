@@ -26,7 +26,7 @@ func NewResolver(client *redis.Client) *Resolver {
 	}
 }
 
-func (r *Resolver) subscribeRedis() {
+func (r *Resolver) SubscribeRedis() {
 	log.Println("Start Redis Stream...")
 
 	go func() {
@@ -36,7 +36,6 @@ func (r *Resolver) subscribeRedis() {
 		for {
 			psms, err := pubsub.Receive()
 			if !errors.Is(err, nil) {
-				// TODO: error handling
 				panic(err)
 			}
 

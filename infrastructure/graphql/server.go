@@ -12,12 +12,10 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/go-redis/redis"
 )
 
-func NewGraphQLServer(client *redis.Client) *handler.Server {
-	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(client)}))
-
+func NewGraphQLServer(resolver *graph.Resolver) *handler.Server {
+	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 	srv.AddTransport(&transport.Websocket{
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {

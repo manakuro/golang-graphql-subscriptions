@@ -9,5 +9,6 @@ require (
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
+	github.com/thanhpk/randstr v1.0.4
 	github.com/vektah/gqlparser/v2 v2.1.0
 )
