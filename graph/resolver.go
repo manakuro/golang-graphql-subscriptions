@@ -3,13 +3,13 @@
 package graph
 
 import (
-	"encoding/json"
 	"errors"
-	"golang-graphql-subscriptions/graph/model"
 	"log"
 	"sync"
 
 	"github.com/go-redis/redis"
+
+	"golang-graphql-subscriptions/graph/model"
 )
 
 type Resolver struct {
@@ -30,29 +30,27 @@ func (r *Resolver) SubscribeRedis() {
 	log.Println("Start Redis Stream...")
 
 	go func() {
-		pubsub := r.RedisClient.Subscribe("room")
-		defer pubsub.Close()
-
 		for {
-			psms, err := pubsub.Receive()
+			log.Println("Stream starting...")
+			streams, err := r.RedisClient.XRead(&redis.XReadArgs{
+				Streams: []string{"room", "$"},
+				Block:   0,
+			}).Result()
 			if !errors.Is(err, nil) {
 				panic(err)
 			}
 
-			switch data := psms.(type) {
-			case *redis.Message:
-				msg := &model.Message{}
-				if err := json.Unmarshal([]byte(data.Payload), &msg); !errors.Is(err, nil) {
-					log.Println(err)
-					continue
-				}
-
-				r.mutex.Lock()
-				for _, ch := range r.messageChannels {
-					ch <- msg
-				}
-				r.mutex.Unlock()
+			stream := streams[0]
+			m := &model.Message{
+				Message: stream.Messages[0].Values["message"].(string),
 			}
+			r.mutex.Lock()
+			for _, ch := range r.messageChannels {
+				ch <- m
+			}
+			r.mutex.Unlock()
+
+			log.Println("Stream finished...")
 		}
 	}()
 }

@@ -5,33 +5,29 @@ package graph
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
+	"golang-graphql-subscriptions/graph/generated"
+	"golang-graphql-subscriptions/graph/model"
 	"log"
 
 	"github.com/thanhpk/randstr"
 
-	"golang-graphql-subscriptions/graph/generated"
-	"golang-graphql-subscriptions/graph/model"
+	"github.com/go-redis/redis"
 )
 
 func (r *mutationResolver) CreateMessage(ctx context.Context, message string) (*model.Message, error) {
 	m := model.Message{
 		Message: message,
 	}
-	data, err := json.Marshal(m)
-	if !errors.Is(err, nil) {
-		return nil, err
-	}
 
-	r.RedisClient.Publish("room", data)
+	r.RedisClient.XAdd(&redis.XAddArgs{
+		Stream: "room",
+		ID:     "*",
+		Values: map[string]interface{}{
+			"message": m.Message,
+		},
+	})
 
 	return &m, nil
-}
-
-func (r *queryResolver) Message(ctx context.Context) ([]*model.Message, error) {
-	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *subscriptionResolver) MessageCreated(ctx context.Context) (<-chan *model.Message, error) {
@@ -57,12 +53,8 @@ func (r *subscriptionResolver) MessageCreated(ctx context.Context) (<-chan *mode
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
-// Query returns generated.QueryResolver implementation.
-func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
-
 // Subscription returns generated.SubscriptionResolver implementation.
 func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subscriptionResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
