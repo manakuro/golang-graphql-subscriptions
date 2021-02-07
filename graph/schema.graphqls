@@ -3,6 +3,10 @@ type Message {
   message: String!
 }
 
+type Query {
+  messages: [Message]
+}
+
 type Mutation {
   createMessage(message: String!): Message
 }

@@ -36,6 +36,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	Query() QueryResolver
 	Subscription() SubscriptionResolver
 }
 
@@ -53,6 +54,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Messages func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -62,6 +64,9 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateMessage(ctx context.Context, message string) (*model.Message, error)
+}
+type QueryResolver interface {
+	Messages(ctx context.Context) ([]*model.Message, error)
 }
 type SubscriptionResolver interface {
 	MessageCreated(ctx context.Context) (<-chan *model.Message, error)
@@ -107,6 +112,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateMessage(childComplexity, args["message"].(string)), true
+
+	case "Query.messages":
+		if e.complexity.Query.Messages == nil {
+			break
+		}
+
+		return e.complexity.Query.Messages(childComplexity), true
 
 	case "Subscription.messageCreated":
 		if e.complexity.Subscription.MessageCreated == nil {
@@ -199,6 +211,10 @@ var sources = []*ast.Source{
 	{Name: "graph/schema.graphqls", Input: `type Message {
   id: ID!
   message: String!
+}
+
+type Query {
+  messages: [Message]
 }
 
 type Mutation {
@@ -391,6 +407,38 @@ func (ec *executionContext) _Mutation_createMessage(ctx context.Context, field g
 	res := resTmp.(*model.Message)
 	fc.Result = res
 	return ec.marshalOMessage2ᚖgolangᚑgraphqlᚑsubscriptionsᚋgraphᚋmodelᚐMessage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_messages(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Messages(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Message)
+	fc.Result = res
+	return ec.marshalOMessage2ᚕᚖgolangᚑgraphqlᚑsubscriptionsᚋgraphᚋmodelᚐMessage(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1679,6 +1727,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "messages":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_messages(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -2269,6 +2328,46 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) marshalOMessage2ᚕᚖgolangᚑgraphqlᚑsubscriptionsᚋgraphᚋmodelᚐMessage(ctx context.Context, sel ast.SelectionSet, v []*model.Message) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMessage2ᚖgolangᚑgraphqlᚑsubscriptionsᚋgraphᚋmodelᚐMessage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalOMessage2ᚖgolangᚑgraphqlᚑsubscriptionsᚋgraphᚋmodelᚐMessage(ctx context.Context, sel ast.SelectionSet, v *model.Message) graphql.Marshaler {
