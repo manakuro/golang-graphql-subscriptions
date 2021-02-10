@@ -42,6 +42,7 @@ func (r *Resolver) SubscribeRedis() {
 
 			stream := streams[0]
 			m := &model.Message{
+				ID:      stream.Messages[0].ID,
 				Message: stream.Messages[0].Values["message"].(string),
 			}
 			r.mutex.Lock()
